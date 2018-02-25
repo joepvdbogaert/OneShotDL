@@ -4,7 +4,7 @@ import numpy as np
 from keras.utils import to_categorical
 import random
 
-def load_mnist(path, kind='train', normalize=False, return_4d_tensor=False, one_hot=False):
+def load_mnist(path, kind='train', normalize=True, return_4d_tensor=True, one_hot=True):
     """ Load MNIST / Fashion MNIST and prepare in specified way. 
     
     :param path: Relative path to the data. 
@@ -39,7 +39,7 @@ def load_mnist(path, kind='train', normalize=False, return_4d_tensor=False, one_
     return images, labels
 
 
-def split_and_select_random_data(x, y, num_target_classes=5, num_examples_per_class=1):
+def split_and_select_random_data(x, y, xtest, ytest, num_target_classes=5, num_examples_per_class=1):
     """ Selects random classes and returns random examples of these classes.
 
     :param x: Numpy ndarray with the training data.
@@ -78,11 +78,15 @@ def split_and_select_random_data(x, y, num_target_classes=5, num_examples_per_cl
     target_classes = random.sample(range(total_classes), num_target_classes)
 
     # split the data based on these classes
-    target_bools = (y[:,target_classes].sum(axis=1) == 1)
+    target_bools = (y[:,target_classes].sum(axis=1)==1)
     y_target_all = y[target_bools,:]
     x_target_all = x[target_bools,:]
     y_auxiliary = y[~target_bools]
     x_auxiliary = x[~target_bools]
+
+    test_bools = (ytest[:,target_classes].sum(axis=1)==1)
+    x_test = xtest[test_bools,:]
+    y_test = ytest[test_bools,:]
 
     # select random examples of target classes
     x_target_labeled, y_target, x_target_unlabeled = get_random_labeled_examples(x_target_all, y_target_all, target_classes[0], num_examples_per_class)
@@ -93,4 +97,4 @@ def split_and_select_random_data(x, y, num_target_classes=5, num_examples_per_cl
         y_target = np.concatenate([y_target, y_temp])
         x_target_unlabeled = np.concatenate([x_target_unlabeled, x_unlabeled_temp])
 
-    return x_target_labeled, y_target, x_target_unlabeled, x_auxiliary, y_auxiliary
+    return x_target_labeled, y_target, x_test, y_test, x_target_unlabeled, x_auxiliary, y_auxiliary
