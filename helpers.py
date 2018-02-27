@@ -98,3 +98,27 @@ def split_and_select_random_data(x, y, xtest, ytest, num_target_classes=5, num_e
         x_target_unlabeled = np.concatenate([x_target_unlabeled, x_unlabeled_temp])
 
     return x_target_labeled, y_target, x_test, y_test, x_target_unlabeled, x_auxiliary, y_auxiliary
+
+
+def reinitialize_random_weights(model, layer_nr):
+    """ Replaces weights of a specified layer in a model with random weights.
+
+    :param model: A Keras model.
+    :param layer_nr: The number of the layer to reinitialize.
+    :returns: A Keras model with random small weights at the specified layer number. 
+    """
+    
+    # get shape of the required weights of the specified layer
+    old_weights = model.layers[ layer_nr ].get_weights()
+    W_shape = old_weights[0].shape
+    b_shape = len(old_weights[1])
+
+    # initialize random weights with same shape
+    W_init = np.random.randn( W_shape[0], W_shape[1] ) * 0.01
+    b_init = np.random.randn( b_shape ) * 0.01
+    new_weights = [W_init, b_init]
+    
+    # give new weights to model and return model
+    model.layers[ layer_nr ].set_weights( new_weights )
+    
+    return model
