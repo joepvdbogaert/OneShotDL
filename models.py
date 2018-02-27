@@ -29,6 +29,7 @@ from keras import backend as K
 from helpers import load_mnist, split_and_select_random_data, reinitialize_random_weights
 
 
+
 class OneShotCNN():
     """ Class used for training a CNN for one shot image classification. 
 
@@ -99,6 +100,7 @@ class OneShotCNN():
         if self.verbose:
             for p in self.hyperparams:
                 print(p+": "+str(params[self.hyper_map[p]]))
+        print("-------------")
 
 
         def define_model(params):
@@ -180,6 +182,10 @@ class OneShotCNN():
 
             for i in range(n):
 
+                # early elimination of candidate solution
+                if i > 1 and np.mean(scores) < 0.21:
+                    break
+
                 # get data
                 x_target_labeled, y_target, x_test, y_test, _, _, _ = \
                     split_and_select_random_data(x, y, xtest, ytest, num_target_classes=5, num_examples_per_class=1)
@@ -208,6 +214,10 @@ class OneShotCNN():
         
         # log after every function call / for every set of parameters
         if self.log:
+            # add zeros to scores if candidate was eliminated prematurely to ensure succesful logging
+            for i in np.arange(self.nfolds - len(scores)):
+                scores.append( np.float(0.0) )
+            # log to object and to files
             self.param_log = pd.concat([self.param_log, pd.DataFrame(np.reshape(params, (1,self.dim)), columns=self.hyperparams)])
             self.scores_log = pd.concat([self.scores_log, pd.DataFrame(np.reshape(scores, (1,self.nfolds)), columns=np.arange(1,self.nfolds+1))])
             self.param_log.to_csv("./Results/params_log.csv", index=False)
@@ -326,6 +336,7 @@ class OneShotTransferCNN():
         if self.verbose:
             for p in self.hyperparams:
                 print(p+": "+str(params[self.hyper_map[p]]))
+        print("-------------")
 
 
         def define_model(params):
@@ -407,6 +418,10 @@ class OneShotTransferCNN():
 
             for i in range(n):
 
+                # early elimination of candidate solution
+                if i > 1 and np.mean(scores) < 0.21:
+                    break
+
                 # get data
                 x_target_labeled, y_target, x_test, y_test, _, x_auxiliary, y_auxiliary = \
                     split_and_select_random_data(x, y, xtest, ytest, num_target_classes=5, num_examples_per_class=1)
@@ -449,9 +464,9 @@ class OneShotTransferCNN():
                                                       horizontal_flip=params[self.hyper_map['finetune_horizontal_flip']],
                                                       rotation_range=params[self.hyper_map['finetune_rotation']])
                 
-                model.fit_generator(finetune_datagen.flow(x_target_labeled, y_target, batch_size=x_target_labeled.shape[0],
+                model.fit_generator(finetune_datagen.flow(x_target_labeled, y_target, batch_size=x_target_labeled.shape[0]),
                                                           steps_per_epoch=1, epochs=params[self.hyper_map['finetune_epochs']],
-                                                          verbose=self.verbose))
+                                                          verbose=self.verbose)
 
                 # evaluate on test set
                 loss, accuracy = model.evaluate(x_test, y_test, verbose=self.verbose, batch_size=y.shape[0])
@@ -465,10 +480,15 @@ class OneShotTransferCNN():
 
         # run the experiment nfolds times and print mean and std.
         scores = cross_validate(self.x_train, self.y_train, self.x_test, self.y_test, params, self.nfolds)
+
         print("Scores: {}.\nMean: {}%. Standard deviation: {}%".format(scores, round(np.mean(scores)*100, 2), round(np.std(scores)*100, 2)))
         
         # log after every function call / for every set of parameters
         if self.log:
+            # add zeros to scores if candidate was eliminated prematurely to ensure succesful logging
+            for i in np.arange(self.nfolds - len(scores)):
+                scores.append( np.float(0.0) )
+            # log to object and to files
             self.param_log = pd.concat([self.param_log, pd.DataFrame(np.reshape(params, (1,self.dim)), columns=self.hyperparams)])
             self.scores_log = pd.concat([self.scores_log, pd.DataFrame(np.reshape(scores, (1,self.nfolds)), columns=np.arange(1,self.nfolds+1))])
             self.param_log.to_csv("./Results/params_log.csv", index=False)
