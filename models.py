@@ -26,7 +26,7 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras import backend as K
 
 # helper functions from OneShotDL
-from helpers import load_mnist, split_and_select_random_data
+from helpers import load_mnist, split_and_select_random_data, reinitialize_random_weights
 
 
 class OneShotCNN():
@@ -391,9 +391,13 @@ class OneShotTransferCNN():
                                                  steps_per_epoch=int(round(x_auxiliary.shape[0]/self.batchsize, 0)),
                                                  epochs=params[self.hyper_map['epochs']], verbose=0)
 
-                # fix layers
+                # fix first layers
                 for layer in model.layers[0:params[self.hyper_map['num_fixed_layers']]]:
                     layer.trainable = False
+
+                # reinitialize the weights of remaining layers
+                for l in np.arange(params[self.hyper_map['num_fixed_layers']], len(model.layers)):
+                    model = reinitialize_random_weights(model, l)
 
                 # fine tune the model
                 finetune_datagen = ImageDataGenerator(width_shift_range=params[self.hyper_map['finetune_width_shift']],
@@ -406,7 +410,6 @@ class OneShotTransferCNN():
                 model.fit_generator(finetune_datagen.flow(x_target_labeled, y_target, batchsize=x_target_labeled.shape[0],
                                                           steps_per_epoch=1, epochs=params[self.hyper_map['finetune_epochs']],
                                                           verbose=0))
-
 
                 # evaluate on test set
                 loss, accuracy = model.evaluate(x_test, y_test, verbose=0, batch_size=y.shape[0])
