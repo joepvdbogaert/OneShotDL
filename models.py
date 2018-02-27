@@ -37,11 +37,11 @@ class OneShotCNN():
     :param verbose: Whether to print detailed information to the console.
     """
 
-    def __init__(self, log=False, folds=10, batchsize=128, verbose=True):
+    def __init__(self, log=False, folds=10, batchsize=128, verbose=1):
         
         # specify the parameter ranges as [min, max].
         # first continuous, then integer params.
-        self.rgs = {'learning_rate': [0.0001, 0.01],
+        self.rgs = {'learning_rate': [0.0001, 0.005],
                     'dropout_rate1': [0.0, 0.6],
                     'dropout_rate2': [0.0, 0.7],
                     'width_shift': [0.0, 0.6],
@@ -217,6 +217,34 @@ class OneShotCNN():
         return -np.mean(scores)
 
 
+    def tune_with_HORD(self, max_evaluations):
+
+        # create controller
+        controller = SerialController(self.objfunction)
+        # experiment design
+        exp_des = LatinHypercube(dim=self.dim, npts=2*self.dim+1)
+        # use a cubic RBF interpolant with a linear tail
+        surrogate = RBFInterpolant(kernel=CubicKernel, tail=LinearTail, maxp=max_evaluations)
+        # use DYCORS with 100d candidate points
+        adapt_samp = CandidateDYCORS(data=self, numcand=100*self.dim)
+        # strategy
+        strategy = SyncStrategyNoConstraints(worker_id=0, data=self, maxeval=max_evaluations, nsamples=1,
+                                             exp_design=exp_des, response_surface=surrogate,
+                                             sampling_method=adapt_samp)
+        controller.strategy = strategy
+
+        # Run the optimization strategy
+        start_time = datetime.now()
+        result = controller.run()
+
+        print('Best value found: {0}'.format(result.value))
+        print('Best solution found: {0}\n'.format(
+            np.array_str(result.params[0], max_line_width=np.inf,
+                         precision=5, suppress_small=True)))
+
+        print('Started: '+str(start_time)+'. Ended: ' + str(datetime.now()))
+
+
 
 class OneShotTransferCNN():
     """ Class used for one shot image classification with Transfer Learning. 
@@ -226,7 +254,7 @@ class OneShotTransferCNN():
     :param verbose: Whether to print detailed information to the console.
     """
 
-    def __init__(self, log=False, folds=10, batchsize=128, verbose=True):
+    def __init__(self, log=False, folds=10, batchsize=128, verbose=1):
         
         # specify the parameter ranges as [min, max].
         # first continuous, then integer params.
@@ -254,15 +282,16 @@ class OneShotTransferCNN():
                     'finetune_horizontal_flip': [0, 1],
                     'epochs': [3, 10],
                     'finetune_epochs': [50, 1000],
-                    'num_fixed_layers': [0, 8]}
+                    'num_fixed_layers': [1, 13],
+                    'reinitialize_weights': [0, 1]}
 
         self.hyperparams = list(self.rgs.keys())
         self.dim = len(self.hyperparams)
         self.hyper_map = {self.hyperparams[i]:i for i in range(len(self.rgs.keys()))}
         self.xlow = np.array([self.rgs[key][0] for key in self.hyperparams])
         self.xup = np.array([self.rgs[key][1] for key in self.hyperparams])
-        self.continuous = np.arange(0, 7)
-        self.integer = np.arange(7, self.dim)
+        self.continuous = np.arange(0, 12)
+        self.integer = np.arange(12, self.dim)
         
         # fixed parameters
         self.batchsize = batchsize
@@ -389,15 +418,28 @@ class OneShotTransferCNN():
                 print("fit {}:".format(i+1))
                 model.fit_generator(datagen.flow(x_auxiliary, y_auxiliary, batch_size=self.batchsize),
                                                  steps_per_epoch=int(round(x_auxiliary.shape[0]/self.batchsize, 0)),
-                                                 epochs=params[self.hyper_map['epochs']], verbose=0)
+                                                 epochs=params[self.hyper_map['epochs']], verbose=self.verbose)
 
                 # fix first layers
-                for layer in model.layers[0:params[self.hyper_map['num_fixed_layers']]]:
+                num_fixed = int(min(params[self.hyper_map['num_fixed_layers']], len(model.layers)))
+                print("CNN has {} conv layers, {} dense layers, and {} layers in total.".format(params[self.hyper_map['num_conv_layers']],
+                                                                                                params[self.hyper_map['num_dense_layers']],
+                                                                                                len(model.layers)))
+                for layer in model.layers[0:num_fixed]:
                     layer.trainable = False
 
                 # reinitialize the weights of remaining layers
-                for l in np.arange(params[self.hyper_map['num_fixed_layers']], len(model.layers)):
-                    model = reinitialize_random_weights(model, l)
+                if params[self.hyper_map['reinitialize_weights']]:
+                    for l in np.arange(num_fixed, len(model.layers)-1):
+                        model = reinitialize_random_weights(model, l)
+
+                # always reinitialize the classification layer
+                model = reinitialize_random_weights(model, len(model.layers)-1)
+
+                # check if it does what you think
+                if self.verbose:
+                    print(model.summary())
+                    print("Number of fixed layers: {}".format(params[self.hyper_map['num_fixed_layers']]))
 
                 # fine tune the model
                 finetune_datagen = ImageDataGenerator(width_shift_range=params[self.hyper_map['finetune_width_shift']],
@@ -407,12 +449,12 @@ class OneShotTransferCNN():
                                                       horizontal_flip=params[self.hyper_map['finetune_horizontal_flip']],
                                                       rotation_range=params[self.hyper_map['finetune_rotation']])
                 
-                model.fit_generator(finetune_datagen.flow(x_target_labeled, y_target, batchsize=x_target_labeled.shape[0],
+                model.fit_generator(finetune_datagen.flow(x_target_labeled, y_target, batch_size=x_target_labeled.shape[0],
                                                           steps_per_epoch=1, epochs=params[self.hyper_map['finetune_epochs']],
-                                                          verbose=0))
+                                                          verbose=self.verbose))
 
                 # evaluate on test set
-                loss, accuracy = model.evaluate(x_test, y_test, verbose=0, batch_size=y.shape[0])
+                loss, accuracy = model.evaluate(x_test, y_test, verbose=self.verbose, batch_size=y.shape[0])
 
                 # report score
                 print("test accuracy: {}%.".format(round(accuracy*100, 2)))
@@ -434,3 +476,31 @@ class OneShotTransferCNN():
 
         # Return negative mean value for pySOT to minimize
         return -np.mean(scores)
+
+
+    def tune_with_HORD(self, max_evaluations):
+
+        # create controller
+        controller = SerialController(self.objfunction)
+        # experiment design
+        exp_des = LatinHypercube(dim=self.dim, npts=2*self.dim+1)
+        # use a cubic RBF interpolant with a linear tail
+        surrogate = RBFInterpolant(kernel=CubicKernel, tail=LinearTail, maxp=max_evaluations)
+        # use DYCORS with 100d candidate points
+        adapt_samp = CandidateDYCORS(data=self, numcand=100*self.dim)
+        # strategy
+        strategy = SyncStrategyNoConstraints(worker_id=0, data=self, maxeval=max_evaluations, nsamples=1,
+                                             exp_design=exp_des, response_surface=surrogate,
+                                             sampling_method=adapt_samp)
+        controller.strategy = strategy
+
+        # Run the optimization strategy
+        start_time = datetime.now()
+        result = controller.run()
+
+        print('Best value found: {0}'.format(result.value))
+        print('Best solution found: {0}\n'.format(
+            np.array_str(result.params[0], max_line_width=np.inf,
+                         precision=5, suppress_small=True)))
+
+        print('Started: '+str(start_time)+'. Ended: ' + str(datetime.now()))
