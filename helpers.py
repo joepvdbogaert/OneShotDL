@@ -40,7 +40,7 @@ def load_mnist(path, kind='train', normalize=True, return_4d_tensor=True, one_ho
 
 
 def split_and_select_random_data(x, y, xtest, ytest, num_target_classes=5, num_examples_per_class=1):
-    """ Selects random classes and returns random examples of these classes.
+    """ Select random classes and return random examples of these classes.
 
     :param x: Numpy ndarray with the training data.
     :param y: Labels of the training data (one-hot encoded in 2d array).
@@ -101,7 +101,7 @@ def split_and_select_random_data(x, y, xtest, ytest, num_target_classes=5, num_e
 
 
 def reinitialize_random_weights(model, layer_nr):
-    """ Replaces weights of a specified layer in a model with random weights.
+    """ Replace weights of a specified layer in a model with random weights.
 
     :param model: A Keras model.
     :param layer_nr: The number of the layer to reinitialize.

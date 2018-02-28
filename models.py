@@ -228,7 +228,11 @@ class OneShotCNN():
 
 
     def tune_with_HORD(self, max_evaluations):
+        """ Automatically tune hyperparameters using HORD (Ilievski et al., 2017). 
 
+        :param max_evaluations: maximum function evaluations (so maximum number of parameter settings to try).
+        """
+        
         # create controller
         controller = SerialController(self.objfunction)
         # experiment design
@@ -437,9 +441,6 @@ class OneShotTransferCNN():
 
                 # fix first layers
                 num_fixed = int(min(params[self.hyper_map['num_fixed_layers']], len(model.layers)))
-                print("CNN has {} conv layers, {} dense layers, and {} layers in total.".format(params[self.hyper_map['num_conv_layers']],
-                                                                                                params[self.hyper_map['num_dense_layers']],
-                                                                                                len(model.layers)))
                 for layer in model.layers[0:num_fixed]:
                     layer.trainable = False
 
@@ -499,6 +500,10 @@ class OneShotTransferCNN():
 
 
     def tune_with_HORD(self, max_evaluations):
+        """ Automatically tune hyperparameters using HORD (Ilievski et al., 2017). 
+
+        :param max_evaluations: maximum function evaluations (so maximum number of parameter settings to try).
+        """
 
         # create controller
         controller = SerialController(self.objfunction)
