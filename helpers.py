@@ -122,3 +122,36 @@ def reinitialize_random_weights(model, layer_nr):
     model.layers[ layer_nr ].set_weights( new_weights )
     
     return model
+
+def freeze_layers(model, num_fixed_layers, count_only_trainable_layers=True, reinitialize_remaining=False, reinitialize_last=False):
+    """ Freeze the first num_fixed_layers layers of a model.
+    
+    :param model: A keras model.
+    :param num_fixed_layers: The number of layers to fix.
+    :param count_only_trainable_layers: If true, only counts layers that actually have weights.
+                                        If false, attempts to freeze first layers, regardless of type.
+    :returns: The Keras model with the specified layers frozen.
+    """
+    def get_layers_with_weights(model):
+        has_weights = []
+        for l in range(len(model.layers)):
+            W = model.layers[l].get_weights()
+            if len(W)>0:
+                has_weights.append(l)
+        return has_weights
+    
+    # get the indexes of the layers that have weights
+    layers_with_weights = get_layers_with_weights(model)
+    for l in layers_with_weights[0:min(num_fixed_layers,len(layers_with_weights)-1)]:
+        model.layers[l].trainable = False
+
+    # reinitialize the weights of remaining layers if specified
+    if reinitialize_remaining and num_fixed_layers <= len(layers_with_weights)-1:
+        for l in layers_with_weights[num_fixed_layers:len(layers_with_weights)-1]:
+            model = reinitialize_random_weights(model, l)
+
+    if reinitialize_last:
+        model = reinitialize_random_weights(model, layers_with_weights[-1])
+
+    return model
+    
