@@ -549,7 +549,7 @@ class OneShotAutoencoder():
         
         # specify the parameter ranges as [min, max].
         # first continuous, then integer params.
-        self.rgs = {'learning_rate': [0.0001, 0.01],
+        self.rgs = {'learning_rate': [0.0001, 0.1],
                     'finetune_learning_rate': [0.0001, 0.01],
                     'dropout_rate1': [0.0, 0.6],
                     'dropout_rate2': [0.0, 0.7],
