@@ -36,11 +36,11 @@ class OneShotCNN():
     :param folds: Number of experiments to run for each combination of hyperparameter values.
     :param verbose: Whether to print detailed information to the console.
     """
-    
+
     name = "OneShotCNN"
 
     def __init__(self, log=False, folds=10, batchsize=128, verbose=1):
-        
+
         # specify the parameter ranges as [min, max].
         # first continuous, then integer params.
         self.rgs = {'learning_rate': [0.0001, 0.005],
@@ -67,21 +67,21 @@ class OneShotCNN():
         self.xup = np.array([self.rgs[key][1] for key in self.hyperparams])
         self.continuous = np.arange(0, 7)
         self.integer = np.arange(7, self.dim)
-        
+
         # fixed parameters
         self.batchsize = batchsize
         self.log = log
         self.nfolds = folds # for cross validation
-        
+
         # data
         self.x_train, self.y_train = load_mnist("./Data/", kind='train')
         self.x_test, self.y_test = load_mnist("./Data/", kind='test')
         self.num_classes = self.y_test.shape[1]
-        
+
         # logging results
         self.param_log = pd.DataFrame(columns=self.hyperparams)
         self.scores_log = pd.DataFrame(columns=np.arange(1,self.nfolds+1))
-        
+
         # printing
         self.verbose = verbose
 
@@ -95,7 +95,7 @@ class OneShotCNN():
         :param params: The parameters to use for the function evaluation (array like).
         :returns: Negative mean accuracy on the test set (negative for minimization).
         """
-        
+
         self.exp_number += 1
         print("-------------\nExperiment {}.\n-------------".format(self.exp_number))
         if self.verbose:
@@ -115,15 +115,15 @@ class OneShotCNN():
             convs = int(params[self.hyper_map['num_conv_layers']])
             pools = int(params[self.hyper_map['num_maxpools']])
             add_max_pool_after_layer = np.arange(1, convs+1)[::-1][0:pools]
-            
+
             # initialize model
             model = Sequential()
-            
+
             # add first convolutional layer and specify input shape
             model.add(Conv2D(2**int(params[self.hyper_map['neurons_first_conv']]), 
                              kernel_size=(3,3), activation='relu', 
                              input_shape=(28,28,1), data_format="channels_last"))
-            
+
             # possibly add max pool
             if 0 in add_max_pool_after_layer:
                 model.add(MaxPooling2D(pool_size=(2, 2)))
@@ -309,21 +309,21 @@ class OneShotTransferCNN():
         self.xup = np.array([self.rgs[key][1] for key in self.hyperparams])
         self.continuous = np.arange(0, 12)
         self.integer = np.arange(12, self.dim)
-        
+
         # fixed parameters
         self.batchsize = batchsize
         self.log = log
         self.nfolds = folds # for cross validation
-        
+
         # data
         self.x_train, self.y_train = load_mnist("./Data/", kind='train')
         self.x_test, self.y_test = load_mnist("./Data/", kind='test')
         self.num_classes = self.y_test.shape[1]
-        
+
         # logging results
         self.param_log = pd.DataFrame(columns=self.hyperparams)
         self.scores_log = pd.DataFrame(columns=np.arange(1,self.nfolds+1))
-        
+
         # printing
         self.verbose = verbose
 
@@ -337,7 +337,7 @@ class OneShotTransferCNN():
         :param params: The parameters to use for the function evaluation (array like).
         :returns: Negative mean accuracy on the test set (negative for minimization).
         """
-        
+
         self.exp_number += 1
         print("-------------\nExperiment {}.\n-------------".format(self.exp_number))
         if self.verbose:
@@ -357,46 +357,46 @@ class OneShotTransferCNN():
             convs = int(params[self.hyper_map['num_conv_layers']])
             pools = int(params[self.hyper_map['num_maxpools']])
             add_max_pool_after_layer = np.arange(1, convs+1)[::-1][0:pools]
-            
+
             # initialize model
             model = Sequential()
-            
+
             # add first convolutional layer and specify input shape
             model.add(Conv2D(2**int(params[self.hyper_map['neurons_first_conv']]), 
                              kernel_size=(3,3), activation='relu', 
                              input_shape=(28,28,1), data_format="channels_last"))
-            
+
             # possibly add max pool
             if 0 in add_max_pool_after_layer:
                 model.add(MaxPooling2D(pool_size=(2, 2)))
 
             # possibly add more conv layers
             if int(params[self.hyper_map['num_conv_layers']]) > 1:
-                
+
                 for l in range(1, int(params[self.hyper_map['num_conv_layers']])):
-                    
+
                     model.add(Conv2D(2**int(params[self.hyper_map['neurons_remaining_conv']]), (3, 3), activation='relu'))
-                    
+
                     if l in add_max_pool_after_layer:
                         model.add(MaxPooling2D(pool_size=(2, 2)))
-            
+
             # dropout and flatten before the dense layers
             model.add(Dropout(params[self.hyper_map['dropout_rate1']]))
             model.add(Flatten())
-            
+
             # add dense layers before the classification layer
             for l in range(int(params[self.hyper_map['num_dense_layers']])):
                 model.add(Dense(2**int(params[self.hyper_map['neurons_dense']]), activation='relu'))
-            
+
             # classification layer
             model.add(Dropout(params[self.hyper_map['dropout_rate2']]))
             model.add(Dense(self.num_classes, activation='softmax'))
-            
+
             # compile and return
             model.compile(loss=keras.losses.categorical_crossentropy,
                           optimizer=keras.optimizers.RMSprop(lr=params[self.hyper_map['learning_rate']]),
                           metrics=['accuracy'])
-            
+
             # create data generator with augmentations
             datagen = ImageDataGenerator(width_shift_range=params[self.hyper_map['width_shift']],
                                          height_shift_range=params[self.hyper_map['height_shift']],
@@ -406,7 +406,7 @@ class OneShotTransferCNN():
                                          rotation_range=params[self.hyper_map['rotation']])
 
             return model, datagen
-            
+
 
         def cross_validate(x, y, xtest, ytest, params, n):
             """ Cross validate with random sampling. 
@@ -449,12 +449,12 @@ class OneShotTransferCNN():
                                       count_only_trainable_layers=True,
                                       reinitialize_remaining=params[self.hyper_map['reinitialize_weights']],
                                       reinitialize_last=True)
-                
+
                 # recompile with the frozen layers
                 model.compile(loss=keras.losses.categorical_crossentropy,
                               optimizer=keras.optimizers.RMSprop(lr=params[self.hyper_map['finetune_learning_rate']]),
                               metrics=['accuracy'])
-                
+
                 # check if it does what you think
                 if self.verbose:
                     print(model.summary())
@@ -467,7 +467,7 @@ class OneShotTransferCNN():
                                                       zoom_range=params[self.hyper_map['finetune_zoom']],
                                                       horizontal_flip=params[self.hyper_map['finetune_horizontal_flip']],
                                                       rotation_range=params[self.hyper_map['finetune_rotation']])
-                
+
                 model.fit_generator(finetune_datagen.flow(x_target_labeled, y_target, batch_size=x_target_labeled.shape[0]),
                                                           steps_per_epoch=1, epochs=params[self.hyper_map['finetune_epochs']],
                                                           verbose=self.verbose)
@@ -486,7 +486,7 @@ class OneShotTransferCNN():
         scores = cross_validate(self.x_train, self.y_train, self.x_test, self.y_test, params, self.nfolds)
 
         print("Scores: {}.\nMean: {}%. Standard deviation: {}%".format(scores, round(np.mean(scores)*100, 2), round(np.std(scores)*100, 2)))
-        
+
         # log after every function call / for every set of parameters
         if self.log:
             # add zeros to scores if candidate was eliminated prematurely to ensure succesful logging
@@ -544,9 +544,9 @@ class OneShotAutoencoder():
     """
 
     name = "OneShotAutoencoder"
-    
+
     def __init__(self, log=False, folds=10, batchsize=128, verbose=1):
-        
+
         # specify the parameter ranges as [min, max].
         # first continuous, then integer params.
         self.rgs = {'learning_rate': [0.0001, 0.1],
@@ -584,21 +584,21 @@ class OneShotAutoencoder():
         self.xup = np.array([self.rgs[key][1] for key in self.hyperparams])
         self.continuous = np.arange(0, 12)
         self.integer = np.arange(12, self.dim)
-        
+
         # fixed parameters
         self.batchsize = batchsize
         self.log = log
         self.nfolds = folds # for cross validation
-        
+
         # data
         self.x_train, self.y_train = load_mnist("./Data/", kind='train')
         self.x_test, self.y_test = load_mnist("./Data/", kind='test')
         self.num_classes = self.y_test.shape[1]
-        
+
         # logging results
         self.param_log = pd.DataFrame(columns=self.hyperparams)
         self.scores_log = pd.DataFrame(columns=np.arange(1,self.nfolds+1))
-        
+
         # printing
         self.verbose = verbose
 
@@ -612,7 +612,7 @@ class OneShotAutoencoder():
         :param params: The parameters to use for the function evaluation (array like).
         :returns: Negative mean accuracy on the test set (negative for minimization).
         """
-        
+
         self.exp_number += 1
         print("-------------\nExperiment {}.\n-------------".format(self.exp_number))
         if self.verbose:
@@ -635,21 +635,21 @@ class OneShotAutoencoder():
             add_upsampling_before_layer = np.arange(1, convs+1)[0:pools]
             print("convs: {}. pools: {}. max pools after layers {}. upsampling: {}".format(
                   convs, pools, add_max_pool_after_layer, add_upsampling_before_layer))
-            
+
             # initialize model
             input_img = Input(shape=(28, 28, 1))
 
             # add first convolutional layer and specify input shape
             e = Conv2D(2**int(params[self.hyper_map['neurons_first_conv']]), 
                        kernel_size=(3,3), activation='relu', padding='same')(input_img)
-            
+
             # possibly add max pool
             if 0 in add_max_pool_after_layer:
                 e = MaxPooling2D(pool_size=(2, 2))(e)
 
             # possibly add more conv layers
             if int(params[self.hyper_map['num_conv_layers']]) > 1:
-                
+
                 for l in range(1, int(params[self.hyper_map['num_conv_layers']])):
                     e = Conv2D(2**int(params[self.hyper_map['neurons_remaining_conv']]), (3, 3),
                                activation='relu', padding='same')(e)
@@ -662,11 +662,11 @@ class OneShotAutoencoder():
 
             # flatten before the dense layers
             e = Flatten()(e)
-            
+
             # add dense layers before the classification layer
             for l in range(int(params[self.hyper_map['num_dense_layers']])):
                 e = Dense(2**int(params[self.hyper_map['neurons_dense']]), activation='relu')(e)
-            
+
             # add bottleneck layer
             encoder = Dense(int(params[self.hyper_map['neurons_bottleneck']]), activation='relu')(e)
 
@@ -677,12 +677,12 @@ class OneShotAutoencoder():
                 else:
                     e = Dense(2**int(params[self.hyper_map['neurons_dense']]), activation='relu')(e)
 
-            
+
             e = Dense(reshape_shape[0]*reshape_shape[1]*reshape_shape[2], activation='relu')(e)
 
             # reshape to image format
             e = Reshape(reshape_shape)(e)
-            
+
             # add conv layers and upsampling mirroring the encoder
             for l in range(int(params[self.hyper_map['num_conv_layers']])):
 
@@ -693,18 +693,18 @@ class OneShotAutoencoder():
                     neurons = 2**int(params[self.hyper_map['neurons_first_conv']])
                 else:
                     neurons = 2**int(params[self.hyper_map['neurons_remaining_conv']])
-                
+
                 e = Conv2D(neurons, (3, 3), activation='relu', padding='same')(e)
-            
+
             # add classification layer
             decoder = Conv2D(1, (3, 3), activation='sigmoid', padding='same')(e)
 
             # initialize model
             autoencoder = Model(input_img, decoder)
-            
+
             autoencoder.compile(optimizer=keras.optimizers.RMSprop(lr=params[self.hyper_map['learning_rate']]),
                                 loss='binary_crossentropy', metrics=['accuracy'])
-            
+
             # create data generator with augmentations
             datagen = ImageDataGenerator(width_shift_range=params[self.hyper_map['width_shift']],
                                          height_shift_range=params[self.hyper_map['height_shift']],
@@ -718,7 +718,7 @@ class OneShotAutoencoder():
                 print(autoencoder.summary())
 
             return autoencoder, encoder, datagen, input_img
-            
+
 
         def cross_validate(x, y, xtest, ytest, params, n):
             """ Cross validate with random sampling. 
@@ -757,7 +757,7 @@ class OneShotAutoencoder():
                 # initialize classification model
                 classifier = Dense(y.shape[1], activation='softmax')(encoder)
                 model = Model(input_img, classifier)
-                
+
                 # freeze layers, possibly reinitialize other layers 
                 # (except the last one because it is just created)
                 num_fixed = int(min(params[self.hyper_map['num_fixed_layers']], len(model.layers)))
@@ -784,7 +784,7 @@ class OneShotAutoencoder():
                                                       zoom_range=params[self.hyper_map['finetune_zoom']],
                                                       horizontal_flip=params[self.hyper_map['finetune_horizontal_flip']],
                                                       rotation_range=params[self.hyper_map['finetune_rotation']])
-                
+
                 model.fit_generator(finetune_datagen.flow(x_target_labeled,
                                                           y_target,
                                                           batch_size=x_target_labeled.shape[0]),
@@ -807,7 +807,7 @@ class OneShotAutoencoder():
 
         print("Scores: {}.\nMean: {}%. Standard deviation: {}%".format(
               scores, round(np.mean(scores)*100, 2), round(np.std(scores)*100, 2)))
-        
+
         # log after every function call / for every set of parameters
         if self.log:
             # add zeros to scores if candidate was eliminated prematurely to ensure succesful logging
