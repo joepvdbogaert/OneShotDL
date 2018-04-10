@@ -58,7 +58,7 @@ class OneShotCNN():
                     'neurons_dense': [5, 10],
                     'rotation': [0, 360],
                     'horizontal_flip': [0, 1],
-                    'epochs': [50, 1000]}
+                    'epochs': [50, 3000]}
 
         self.hyperparams = list(self.rgs.keys())
         self.dim = len(self.hyperparams)
