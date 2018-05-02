@@ -206,13 +206,16 @@ class OneShotCNN():
                 print("test accuracy: {}%.".format(round(accuracy*100, 2)))
                 scores.append(accuracy)
 
+                # prevent memory buildup
+                K.clear_session()
+
             return scores
 
 
         # run the experiment nfolds times and print mean and std.
         scores = cross_validate(self.x_train, self.y_train, self.x_test, self.y_test, params, self.nfolds)
         print("Scores: {}.\nMean: {}%. Standard deviation: {}%".format(scores, round(np.mean(scores)*100, 2), round(np.std(scores)*100, 2)))
-        
+
         # log after every function call / for every set of parameters
         if self.log:
             # add zeros to scores if candidate was eliminated prematurely to ensure succesful logging
@@ -224,7 +227,10 @@ class OneShotCNN():
             self.param_log.to_csv("./Results/"+self.name+"_params_log.csv", index=False)
             self.scores_log.to_csv("./Results/"+self.name+"_scores_log.csv", index=False)
 
-        # Return negative mean value for pySOT to minimize
+        # prevent memory buildup
+        K.clear_session()
+
+        # return negative mean value for pySOT to minimize
         return -np.mean(scores)
 
 
@@ -275,7 +281,7 @@ class OneShotTransferCNN():
         
         # specify the parameter ranges as [min, max].
         # first continuous, then integer params.
-        self.rgs = {'learning_rate': [0.0001, 0.01],
+        self.rgs = {'learning_rate': [0.0001, 0.005],
                     'finetune_learning_rate': [0.0001, 0.01],
                     'dropout_rate1': [0.0, 0.6],
                     'dropout_rate2': [0.0, 0.7],
@@ -298,7 +304,7 @@ class OneShotTransferCNN():
                     'horizontal_flip': [0, 1],
                     'finetune_horizontal_flip': [0, 1],
                     'epochs': [3, 10],
-                    'finetune_epochs': [100, 1000],
+                    'finetune_epochs': [100, 2000],
                     'num_fixed_layers': [1, 13],
                     'reinitialize_weights': [0, 1]}
 
@@ -479,6 +485,9 @@ class OneShotTransferCNN():
                 print("test accuracy: {}%.".format(round(accuracy*100, 2)))
                 scores.append(accuracy)
 
+                # prevent memory buildup
+                K.clear_session()
+
             return scores
 
 
@@ -497,6 +506,9 @@ class OneShotTransferCNN():
             self.scores_log = pd.concat([self.scores_log, pd.DataFrame(np.reshape(scores, (1,self.nfolds)), columns=np.arange(1,self.nfolds+1))])
             self.param_log.to_csv("./Results/"+self.name+"_params_log.csv", index=False)
             self.scores_log.to_csv("./Results/"+self.name+"_scores_log.csv", index=False)
+
+        # prevent memory buildup
+        K.clear_session()
 
         # Return negative mean value for pySOT to minimize
         return -np.mean(scores)
@@ -549,7 +561,7 @@ class OneShotAutoencoder():
 
         # specify the parameter ranges as [min, max].
         # first continuous, then integer params.
-        self.rgs = {'learning_rate': [0.0001, 0.1],
+        self.rgs = {'learning_rate': [0.0001, 0.05],
                     'finetune_learning_rate': [0.0001, 0.01],
                     'dropout_rate1': [0.0, 0.6],
                     'dropout_rate2': [0.0, 0.7],
@@ -799,6 +811,9 @@ class OneShotAutoencoder():
                 print("test accuracy: {}%.".format(round(accuracy*100, 2)))
                 scores.append(accuracy)
 
+                # prevent memory buildup
+                K.clear_session()
+
             return scores
 
 
@@ -818,6 +833,9 @@ class OneShotAutoencoder():
             self.scores_log = pd.concat([self.scores_log, pd.DataFrame(np.reshape(scores, (1,self.nfolds)), columns=np.arange(1,self.nfolds+1))])
             self.param_log.to_csv("./Results/"+self.name+"_params_log.csv", index=False)
             self.scores_log.to_csv("./Results/"+self.name+"_scores_log.csv", index=False)
+
+        # prevent memory buildup
+        K.clear_session()
 
         # Return negative mean value for pySOT to minimize
         return -np.mean(scores)

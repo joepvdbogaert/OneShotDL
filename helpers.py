@@ -121,8 +121,8 @@ def reinitialize_random_weights(model, layer_nr):
     b_shape = len(old_weights[1])
 
     # initialize random weights with same shape
-    W_init = np.random.randn( W_shape[0], W_shape[1] ) * 0.01
-    b_init = np.random.randn( b_shape ) * 0.01
+    W_init = np.random.normal(size=W_shape) * 0.01
+    b_init = np.random.normal(size=b_shape) * 0.01
     new_weights = [W_init, b_init]
 
     # give new weights to model and return model
