@@ -10,7 +10,7 @@ resource.setrlimit(resource.RLIMIT_STACK, (resource.RLIM_INFINITY, resource.RLIM
 
 from models import OneShotAutoencoder
 
-model = OneShotAutoencoder(log=True, verbose=0)
+model = OneShotAutoencoder(log=True, verbose=1)
 max_evals = 200
 
 model.tune_with_HORD(max_evals)

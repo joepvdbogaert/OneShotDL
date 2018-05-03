@@ -114,14 +114,14 @@ class OneShotCNN():
             # determine where to put max pools:
             convs = int(params[self.hyper_map['num_conv_layers']])
             pools = int(params[self.hyper_map['num_maxpools']])
-            add_max_pool_after_layer = np.arange(1, convs+1)[::-1][0:pools]
+            add_max_pool_after_layer = np.arange(convs)[::-1][0:pools]
 
             # initialize model
             model = Sequential()
 
             # add first convolutional layer and specify input shape
             model.add(Conv2D(2**int(params[self.hyper_map['neurons_first_conv']]), 
-                             kernel_size=(3,3), activation='relu', 
+                             kernel_size=(3,3), activation='relu',
                              input_shape=(28,28,1), data_format="channels_last"))
 
             # possibly add max pool
@@ -129,32 +129,32 @@ class OneShotCNN():
                 model.add(MaxPooling2D(pool_size=(2, 2)))
 
             # possibly add more conv layers
-            if int(params[self.hyper_map['num_conv_layers']]) > 1:
-                
-                for l in range(1, int(params[self.hyper_map['num_conv_layers']])):
-                    
+            if convs > 1:
+
+                for l in range(1, convs):
+
                     model.add(Conv2D(2**int(params[self.hyper_map['neurons_remaining_conv']]), (3, 3), activation='relu'))
-                    
+
                     if l in add_max_pool_after_layer:
                         model.add(MaxPooling2D(pool_size=(2, 2)))
-            
+
             # dropout and flatten before the dense layers
             model.add(Dropout(params[self.hyper_map['dropout_rate1']]))
             model.add(Flatten())
-            
+
             # add dense layers before the classification layer
             for l in range(int(params[self.hyper_map['num_dense_layers']])):
                 model.add(Dense(2**int(params[self.hyper_map['neurons_dense']]), activation='relu'))
-            
+
             # classification layer
             model.add(Dropout(params[self.hyper_map['dropout_rate2']]))
             model.add(Dense(self.num_classes, activation='softmax'))
-            
+
             # compile and return
             model.compile(loss=keras.losses.categorical_crossentropy,
                           optimizer=keras.optimizers.RMSprop(lr=params[self.hyper_map['learning_rate']]),
                           metrics=['accuracy'])
-            
+
             # create data generator with augmentations
             datagen = ImageDataGenerator(width_shift_range=params[self.hyper_map['width_shift']],
                                          height_shift_range=params[self.hyper_map['height_shift']],
@@ -164,7 +164,7 @@ class OneShotCNN():
                                          rotation_range=params[self.hyper_map['rotation']])
 
             return model, datagen
-            
+
 
         def cross_validate(x, y, xtest, ytest, params, n):
             """ Cross validate with random sampling. 
@@ -193,7 +193,7 @@ class OneShotCNN():
 
                 # define model according to parameters
                 model, datagen = define_model(params)
-                
+
                 # fits the model on batches with real-time data augmentation:
                 print("fit {}:".format(i+1))
                 model.fit_generator(datagen.flow(x_target_labeled, y_target, batch_size=x_target_labeled.shape[0]),
@@ -362,7 +362,10 @@ class OneShotTransferCNN():
             # determine where to put max pools:
             convs = int(params[self.hyper_map['num_conv_layers']])
             pools = int(params[self.hyper_map['num_maxpools']])
-            add_max_pool_after_layer = np.arange(1, convs+1)[::-1][0:pools]
+            add_max_pool_after_layer = np.arange(convs)[::-1][0:pools]
+
+            print("Conv layers: {}. Max pools: {}. Positioned after layers: {}.".format(
+                  convs, pools, add_max_pool_after_layer))
 
             # initialize model
             model = Sequential()
@@ -377,9 +380,9 @@ class OneShotTransferCNN():
                 model.add(MaxPooling2D(pool_size=(2, 2)))
 
             # possibly add more conv layers
-            if int(params[self.hyper_map['num_conv_layers']]) > 1:
+            if convs > 1:
 
-                for l in range(1, int(params[self.hyper_map['num_conv_layers']])):
+                for l in range(1, convs):
 
                     model.add(Conv2D(2**int(params[self.hyper_map['neurons_remaining_conv']]), (3, 3), activation='relu'))
 
@@ -643,9 +646,9 @@ class OneShotAutoencoder():
             # determine where to put max pools:
             convs = int(params[self.hyper_map['num_conv_layers']])
             pools = int(params[self.hyper_map['num_maxpools']])
-            add_max_pool_after_layer = np.arange(1, convs+1)[::-1][0:pools]
-            add_upsampling_before_layer = np.arange(1, convs+1)[0:pools]
-            print("convs: {}. pools: {}. max pools after layers {}. upsampling: {}".format(
+            add_max_pool_after_layer = np.arange(convs)[::-1][0:pools]
+            add_upsampling_before_layer = np.arange(convs)[0:pools]
+            print("convs: {}. pools: {}. max pools after layers {}. upsampling after: {} (zero-based indexing).".format(
                   convs, pools, add_max_pool_after_layer, add_upsampling_before_layer))
 
             # initialize model
@@ -660,12 +663,12 @@ class OneShotAutoencoder():
                 e = MaxPooling2D(pool_size=(2, 2))(e)
 
             # possibly add more conv layers
-            if int(params[self.hyper_map['num_conv_layers']]) > 1:
+            if convs > 1:
 
-                for l in range(1, int(params[self.hyper_map['num_conv_layers']])):
+                for l in range(1, convs):
                     e = Conv2D(2**int(params[self.hyper_map['neurons_remaining_conv']]), (3, 3),
                                activation='relu', padding='same')(e)
-                    
+
                     if l in add_max_pool_after_layer:
                         e = MaxPooling2D(pool_size=(2, 2))(e)
 
