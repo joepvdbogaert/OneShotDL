@@ -728,7 +728,7 @@ class OneShotAutoencoder():
                                          horizontal_flip=params[self.hyper_map['horizontal_flip']],
                                          rotation_range=params[self.hyper_map['rotation']])
 
-            # check model to see if makes sense
+            # check model to see if it is as expected
             if self.verbose:
                 print(autoencoder.summary())
 
