@@ -1232,8 +1232,8 @@ class OneShotSiameseNetwork():
             # log to object and to files
             self.param_log = pd.concat([self.param_log, pd.DataFrame(np.reshape(params, (1,self.dim)), columns=self.hyperparams)])
             self.scores_log = pd.concat([self.scores_log, pd.DataFrame(np.reshape(scores, (1,self.nfolds)), columns=np.arange(1,self.nfolds+1))])
-            self.param_log.to_csv("./Results/"+self.name+"_params_log.csv", index=False)
-            self.scores_log.to_csv("./Results/"+self.name+"_scores_log.csv", index=False)
+            self.param_log.to_csv("./Results/Siamese/" + self.name+"_params_log.csv", index=False)
+            self.scores_log.to_csv("./Results/Siamese/"+self.name+"_scores_log.csv", index=False)
 
         # prevent memory buildup
         K.clear_session()
