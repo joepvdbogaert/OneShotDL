@@ -18,15 +18,16 @@ from poap.controller import ThreadController, BasicWorkerThread, SerialControlle
 # use keras for the CNN
 import keras
 from keras.models import Sequential, load_model
-from keras.layers import Dense, Dropout, Flatten, Input, Conv2D, MaxPooling2D, Reshape, UpSampling2D
+from keras.layers import Dense, Dropout, Flatten, Input, Conv2D, MaxPooling2D, Reshape, UpSampling2D, merge
 from keras.losses import categorical_crossentropy
 from keras.preprocessing.image import ImageDataGenerator
+from keras.regularizers import l2
+from keras.initializers import RandomNormal
 from keras import backend as K
 from keras import Model
 
 # helper functions from OneShotDL
 from helpers import load_mnist, split_and_select_random_data, reinitialize_random_weights, freeze_layers
-
 
 class OneShotCNN():
     """ Class used for training a CNN for one shot image classification. 
@@ -876,7 +877,7 @@ class OneShotAutoencoder():
 
 
 
-class OneShotCNN():
+class OneShotSiameseNetwork():
     """ Class used for training a CNN for one shot image classification. 
 
     :param log: Boolean that indicates whether to write the results to a csv file.
@@ -903,9 +904,10 @@ class OneShotCNN():
                     'neurons_first_conv': [3, 6],
                     'neurons_remaining_conv': [4, 7],
                     'neurons_dense': [5, 10],
+                    'neurons_final': [5, 11],
                     'rotation': [0, 360],
                     'horizontal_flip': [0, 1],
-                    'epochs': [50, 3000]}
+                    'epochs': [3, 5]}
 
         self.hyperparams = list(self.rgs.keys())
         self.dim = len(self.hyperparams)
@@ -923,6 +925,7 @@ class OneShotCNN():
         # data
         self.x_train, self.y_train = load_mnist("./Data/", kind='train')
         self.x_test, self.y_test = load_mnist("./Data/", kind='test')
+        self.input_shape = (28, 28, 1)
         self.num_classes = self.y_test.shape[1]
 
         # logging results
@@ -934,6 +937,10 @@ class OneShotCNN():
 
         # counter
         self.exp_number = 0
+
+
+    def L1_distance(self, x):
+        return K.abs(x[0] - x[1])
 
 
     def objfunction(self, params):
@@ -951,12 +958,18 @@ class OneShotCNN():
             print("-------------")
 
 
-        def define_model(params):
-            """ Creates the Keras model based on given parameters. 
+        def define_submodel(params):
+            """ Creates the 'leg' of the Siamese model based
+                 on given parameters.
 
-            :param params: The parameters of the object indicating the architecture of the NN.
-            :returns: A tuple of the model and datagenerator. 
+            :param params: The parameters specifying 
+                           the architecture of the NN.
+            :returns: A Keras model object. 
             """
+
+            # define initializers as in paper
+            w_initializer = RandomNormal(0, 1e-2)
+            b_initializer = RandomNormal(0.5, 1e-2)
 
             # determine where to put max pools:
             convs = int(params[self.hyper_map['num_conv_layers']])
@@ -969,7 +982,9 @@ class OneShotCNN():
             # add first convolutional layer and specify input shape
             model.add(Conv2D(2**int(params[self.hyper_map['neurons_first_conv']]), 
                              kernel_size=(3,3), activation='relu',
-                             input_shape=(28,28,1), data_format="channels_last"))
+                             input_shape=(28,28,1), data_format="channels_last",
+                             kernel_initializer = w_initializer, 
+                             kernel_regularizer = l2(2e-4)))
 
             # possibly add max pool
             if 0 in add_max_pool_after_layer:
@@ -980,7 +995,10 @@ class OneShotCNN():
 
                 for l in range(1, convs):
 
-                    model.add(Conv2D(2**int(params[self.hyper_map['neurons_remaining_conv']]), (3, 3), activation='relu'))
+                    model.add(Conv2D(2**int(params[self.hyper_map['neurons_remaining_conv']]), 
+                                     kernel_size=(3, 3), activation='relu',
+                                     kernel_initializer = w_initializer, 
+                                     kernel_regularizer = l2(2e-4)))
 
                     if l in add_max_pool_after_layer:
                         model.add(MaxPooling2D(pool_size=(2, 2)))
@@ -991,14 +1009,46 @@ class OneShotCNN():
 
             # add dense layers before the classification layer
             for l in range(int(params[self.hyper_map['num_dense_layers']])):
-                model.add(Dense(2**int(params[self.hyper_map['neurons_dense']]), activation='relu'))
+                model.add(Dense(2**int(params[self.hyper_map['neurons_dense']]),
+                                activation='relu',
+                                kernel_initializer = w_initializer,
+                                kernel_regularizer = l2(1e-3),
+                                bias_initializer = b_initializer))
 
-            # classification layer
+            # final layer
             model.add(Dropout(params[self.hyper_map['dropout_rate2']]))
-            model.add(Dense(self.num_classes, activation='softmax'))
+            model.add(Dense(2**int(params[self.hyper_map["neurons_final"]]),
+                            activation='sigmoid',
+                            kernel_initializer = w_initializer,
+                            kernel_regularizer = l2(1e-3),
+                            bias_initializer = b_initializer))
+
+            return model
+
+
+        def define_model(params):
+            """ Create and compile the Siamese Network model.
+
+            :param params: parameter values of the model.
+            :return: (model, datagen) where model is the compiled Siamese
+                     Network and datagen is an ImageDataGenerator object, both 
+                     specified according to the given parameters.
+            """
+
+            submodel = define_submodel(params)
+            left_input = Input(self.input_shape)
+            right_input = Input(self.input_shape)
+            encoded_left = submodel(left_input)
+            encoded_right = submodel(right_input)
+
+            # dist function
+            #dist_func = self.dist_funcs[int(params[self.hyper_map["dist_func"]])]
+            combined = merge([encoded_left, encoded_right], mode = self.L1_distance, output_shape = lambda x: x[0])
+            prediction = Dense(1, activation="sigmoid")(combined)
+            model = Model(input=[left_input, right_input], output=prediction)
 
             # compile and return
-            model.compile(loss=keras.losses.categorical_crossentropy,
+            model.compile(loss="binary_crossentropy",
                           optimizer=keras.optimizers.RMSprop(lr=params[self.hyper_map['learning_rate']]),
                           metrics=['accuracy'])
 
@@ -1011,6 +1061,113 @@ class OneShotCNN():
                                          rotation_range=params[self.hyper_map['rotation']])
 
             return model, datagen
+
+        def augment_data(x_auxiliary, y_auxiliary, datagen):
+            """ Perform augmentation over the training data.
+
+            :param x_auxiliary: training data in numpy array.
+            :param y_auxiliary: training data labels in numpy array.
+            :param datagen: Keras ImageDataGenerator object to use for
+                            augmentation.
+            :return dictionary with augmented data separated per class.
+            """
+
+            # store augmented data in dictionary, separated per class
+            data_by_class = {}
+            y_auxiliary = y_auxiliary[:,y_auxiliary.sum(axis=0)>0]
+
+            # loop over classes and augment and save all of it at once
+            for class_ in range(y_auxiliary.shape[1]):
+                # select data of class_
+                x = x_auxiliary[y_auxiliary[:,class_]==1]
+                # augment, shuffle, and save in dictionary in one batch
+                for data in datagen.flow(x_auxiliary, batch_size=x.shape[0], shuffle=True):
+                    data_by_class[class_] = data
+                    break
+
+            # return augmented data by class
+            return data_by_class
+
+        def get_train_batch(data_by_class, batch_size):
+            """ Create pairs of images and the corresponding targets.
+
+            :param data_by_class: dictionary with train data per class.
+            :param batch_size: integer indicating batch size to return.
+            :return: (pairs, targets) where pairs is an np.array with 
+                     batch_size pairs of images and targets is 1 if 
+                     the two images in the pair are of the same class
+                     and 0 otherwise.
+            """
+
+            # select classes for the pairs (first half of the pairs in the batch
+            # has different classes, second half has same classes)
+            numclasses = len(data_by_class.keys())
+            classes1 = np.random.choice(numclasses, size=(batch_size))
+            classes2 = classes1.copy()
+            classes2[:batch_size//2] = np.array((classes2[:batch_size//2] + np.random.randint(1, numclasses)) % numclasses, dtype=int)
+            assert(not np.any(np.equal(classes1[:batch_size//2], classes2[:batch_size//2])), "Error in class selection")
+
+            # create placeholder for pairs and define the binary targets
+            pairs = np.empty((2, batch_size) + self.input_shape)
+            targets = np.zeros((batch_size,))
+            targets[batch_size//2:] = 1
+
+            # total examples available in train data is assumed to be balanced
+            s = data_by_class[0].shape[0] # number of train examples per class
+
+            for i in range(batch_size//2):
+                # select data of the sampled class
+                x1 = data_by_class[classes1[i]]
+                x2 = data_by_class[classes2[i]]
+                # sample image and store it
+                pairs[0,i,:,:,:] = x1[np.random.randint(0, s)].reshape(28,28,1)
+                pairs[1,i,:,:,:] = x2[np.random.randint(0, s)].reshape(28,28,1)
+
+            return pairs, targets
+
+        def fit_model(model, data_by_class, batch_size, nr_batches):
+            """ Train the model on the train set for the given number of batches. """
+            
+            for i in range(nr_batches):
+                # get batch and train on it                  
+                inputs, targets = get_train_batch(data_by_class, batch_size)
+                loss = model.train_on_batch([inputs[0], inputs[1]], targets)
+
+            # return trained model
+            return model
+
+
+        def evaluate_on_test_data(model, xtest, ytest, xsupport, ysupport):
+            """ Evaluate the model on the entire test set provided. """
+
+            def prepare_test_instance(testimage, testclass, ysupport):
+                """ Create pairs of test image and support set images,
+                as well as the correct labels (1 if same class, 0 o/w) """
+                num_support_classes = ysupport.shape[0]
+
+                testimages = np.array([testimage.reshape(self.input_shape) \
+                                           for i in range(num_support_classes)])
+
+                targets = np.reshape(ysupport[:, np.argmax(testclass)], 
+                                     (num_support_classes, 1))
+
+                return testimages, targets
+
+
+            n_correct = 0
+
+            for i in range(xtest.shape[0]):
+
+                image, target = prepare_test_instance(xtest[i], ytest[i], ysupport)
+                probs = model.predict( [image, xsupport] )
+
+                if np.argmax(probs) == np.argmax(target):
+                    n_correct+=1
+
+            # report accuracy
+            accuracy = (n_correct / xtest.shape[0])
+
+            return accuracy
 
 
         def cross_validate(x, y, xtest, ytest, params, n):
@@ -1035,19 +1192,23 @@ class OneShotCNN():
                     break
 
                 # get data
-                x_target_labeled, y_target, x_test, y_test, _, _, _ = \
+                x_target_labeled, y_target, x_test, y_test, x_target_unlabeled, x_auxiliary, y_auxiliary = \
                     split_and_select_random_data(x, y, xtest, ytest, num_target_classes=5, num_examples_per_class=1)
 
                 # define model according to parameters
                 model, datagen = define_model(params)
 
-                # fits the model on batches with real-time data augmentation:
+                # augment and shuffle the data
+                data_by_class = augment_data(x_auxiliary, y_auxiliary, datagen)
+
+                # fits the model on batches
                 print("fit {}:".format(i+1))
-                model.fit_generator(datagen.flow(x_target_labeled, y_target, batch_size=x_target_labeled.shape[0]),
-                                    steps_per_epoch=1, epochs=params[self.hyper_map['epochs']], verbose=0)
+                nr_batches = int(np.round(params[self.hyper_map["epochs"]] * x_auxiliary.shape[0] // self.batchsize, 0))
+                model = fit_model(model, data_by_class, self.batchsize, nr_batches)
 
                 # evaluate on test set
-                loss, accuracy = model.evaluate(x_test, y_test, verbose=0, batch_size=y.shape[0])
+                accuracy = evaluate_on_test_data(model, x_test, y_test, x_target_labeled, y_target)
+                #loss, accuracy = model.evaluate(x_test, y_test, verbose=0, batch_size=y.shape[0])
 
                 # report score
                 print("test accuracy: {}%.".format(round(accuracy*100, 2)))
