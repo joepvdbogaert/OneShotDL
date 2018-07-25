@@ -887,7 +887,7 @@ class OneShotSiameseNetwork():
 
     name = "OneShotSiameseNetwork"
 
-    def __init__(self, log=False, folds=10, batchsize=128, verbose=1):
+    def __init__(self, log=False, folds=10, batchsize=64, verbose=1):
 
         # specify the parameter ranges as [min, max].
         # first continuous, then integer params.
@@ -907,7 +907,7 @@ class OneShotSiameseNetwork():
                     'neurons_final': [5, 11],
                     'rotation': [0, 360],
                     'horizontal_flip': [0, 1],
-                    'epochs': [3, 5]}
+                    'epochs': [3, 15]}
 
         self.hyperparams = list(self.rgs.keys())
         self.dim = len(self.hyperparams)
