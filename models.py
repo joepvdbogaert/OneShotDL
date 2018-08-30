@@ -28,7 +28,8 @@ from keras import Model
 from keras.datasets import mnist
 
 # helper functions from OneShotDL
-from helpers import load_mnist, split_and_select_random_data, reinitialize_random_weights, freeze_layers
+from helpers import load_mnist, split_and_select_random_data, \
+                    reinitialize_random_weights, freeze_layers, load_mnist_from_keras
 
 class OneShotCNN():
     """ Class used for training a CNN for one shot image classification. 
@@ -929,7 +930,7 @@ class OneShotSiameseNetwork():
                     'neurons_final': [5, 11],
                     'rotation': [0, 360],
                     'horizontal_flip': [0, 1],
-                    'epochs': [1, 2]} # [3, 15] <- original setting, [1, 1] used for testing
+                    'epochs': [3, 15]}
 
         self.hyperparams = list(self.rgs.keys())
         self.dim = len(self.hyperparams)
