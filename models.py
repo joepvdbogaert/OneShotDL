@@ -25,7 +25,6 @@ from keras.regularizers import l2
 from keras.initializers import RandomNormal
 from keras import backend as K
 from keras import Model
-from keras.datasets import mnist
 
 # helper functions from OneShotDL
 from helpers import load_mnist, split_and_select_random_data, \
@@ -88,6 +87,11 @@ class OneShotCNN():
         self.num_classes = self.y_test.shape[1]
 
         # logging results
+        if fashion_mnist:
+            folder = "Fashion/"
+        else:
+            folder = "Digits/"
+        self.log_path = "./Results/" + folder
         self.param_log = pd.DataFrame(columns=self.hyperparams)
         self.scores_log = pd.DataFrame(columns=np.arange(1,self.nfolds+1))
 
@@ -233,8 +237,8 @@ class OneShotCNN():
             # log to object and to files
             self.param_log = pd.concat([self.param_log, pd.DataFrame(np.reshape(params, (1,self.dim)), columns=self.hyperparams)])
             self.scores_log = pd.concat([self.scores_log, pd.DataFrame(np.reshape(scores, (1,self.nfolds)), columns=np.arange(1,self.nfolds+1))])
-            self.param_log.to_csv("./Results/"+self.name+"_params_log.csv", index=False)
-            self.scores_log.to_csv("./Results/"+self.name+"_scores_log.csv", index=False)
+            self.param_log.to_csv(self.log_path + self.name + "_params_log.csv", index=False)
+            self.scores_log.to_csv(self.log_path + self.name + "_scores_log.csv", index=False)
 
         # prevent memory buildup
         K.clear_session()
@@ -343,6 +347,11 @@ class OneShotTransferCNN():
         self.num_classes = self.y_test.shape[1]
 
         # logging results
+        if fashion_mnist:
+            folder = "Fashion/"
+        else:
+            folder = "Digits/"
+        self.log_path = "./Results/" + folder
         self.param_log = pd.DataFrame(columns=self.hyperparams)
         self.scores_log = pd.DataFrame(columns=np.arange(1,self.nfolds+1))
 
@@ -523,8 +532,8 @@ class OneShotTransferCNN():
             # log to object and to files
             self.param_log = pd.concat([self.param_log, pd.DataFrame(np.reshape(params, (1,self.dim)), columns=self.hyperparams)])
             self.scores_log = pd.concat([self.scores_log, pd.DataFrame(np.reshape(scores, (1,self.nfolds)), columns=np.arange(1,self.nfolds+1))])
-            self.param_log.to_csv("./Results/"+self.name+"_params_log.csv", index=False)
-            self.scores_log.to_csv("./Results/"+self.name+"_scores_log.csv", index=False)
+            self.param_log.to_csv(self.log_path + self.name + "_params_log.csv", index=False)
+            self.scores_log.to_csv(self.log_path + self.name + "_scores_log.csv", index=False)
 
         # prevent memory buildup
         K.clear_session()
@@ -634,6 +643,11 @@ class OneShotAutoencoder():
         self.num_classes = self.y_test.shape[1]
 
         # logging results
+        if fashion_mnist:
+            folder = "Fashion/"
+        else:
+            folder = "Digits/"
+        self.log_path = "./Results/" + folder
         self.param_log = pd.DataFrame(columns=self.hyperparams)
         self.scores_log = pd.DataFrame(columns=np.arange(1,self.nfolds+1))
 
@@ -857,8 +871,8 @@ class OneShotAutoencoder():
             # log to object and to files
             self.param_log = pd.concat([self.param_log, pd.DataFrame(np.reshape(params, (1,self.dim)), columns=self.hyperparams)])
             self.scores_log = pd.concat([self.scores_log, pd.DataFrame(np.reshape(scores, (1,self.nfolds)), columns=np.arange(1,self.nfolds+1))])
-            self.param_log.to_csv("./Results/"+self.name+"_params_log.csv", index=False)
-            self.scores_log.to_csv("./Results/"+self.name+"_scores_log.csv", index=False)
+            self.param_log.to_csv(self.log_path + self.name + "_params_log.csv", index=False)
+            self.scores_log.to_csv(self.log_path + self.name + "_scores_log.csv", index=False)
 
         # prevent memory buildup
         K.clear_session()
@@ -959,6 +973,11 @@ class OneShotSiameseNetwork():
         self.num_classes = self.y_test.shape[1]
 
         # logging results
+        if fashion_mnist:
+            folder = "Fashion/"
+        else:
+            folder = "Digits/"
+        self.log_path = "./Results/" + folder
         self.param_log = pd.DataFrame(columns=self.hyperparams)
         self.scores_log = pd.DataFrame(columns=np.arange(1,self.nfolds+1))
 
@@ -1262,8 +1281,8 @@ class OneShotSiameseNetwork():
             # log to object and to files
             self.param_log = pd.concat([self.param_log, pd.DataFrame(np.reshape(params, (1,self.dim)), columns=self.hyperparams)])
             self.scores_log = pd.concat([self.scores_log, pd.DataFrame(np.reshape(scores, (1,self.nfolds)), columns=np.arange(1,self.nfolds+1))])
-            self.param_log.to_csv("./Results/Siamese/" + self.name+"_params_log.csv", index=False)
-            self.scores_log.to_csv("./Results/Siamese/"+self.name+"_scores_log.csv", index=False)
+            self.param_log.to_csv(self.log_path + self.name + "_params_log.csv", index=False)
+            self.scores_log.to_csv(self.log_path + self.name + "_scores_log.csv", index=False)
 
         # prevent memory buildup
         K.clear_session()
