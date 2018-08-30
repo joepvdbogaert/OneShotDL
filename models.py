@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Developed in Feb and Mar, 2018
+Developed in Feb - Aug, 2018
 
 One Shot Image Classification on Zalando MNIST
 
@@ -25,6 +25,7 @@ from keras.regularizers import l2
 from keras.initializers import RandomNormal
 from keras import backend as K
 from keras import Model
+from keras.datasets import mnist
 
 # helper functions from OneShotDL
 from helpers import load_mnist, split_and_select_random_data, reinitialize_random_weights, freeze_layers
@@ -39,7 +40,7 @@ class OneShotCNN():
 
     name = "OneShotCNN"
 
-    def __init__(self, log=False, folds=10, batchsize=128, verbose=1):
+    def __init__(self, log=False, folds=10, batchsize=128, verbose=1, fashion_mnist=False):
 
         # specify the parameter ranges as [min, max].
         # first continuous, then integer params.
@@ -74,8 +75,15 @@ class OneShotCNN():
         self.nfolds = folds # for cross validation
 
         # data
-        self.x_train, self.y_train = load_mnist("./Data/", kind='train')
-        self.x_test, self.y_test = load_mnist("./Data/", kind='test')
+        if fashion_mnist:
+            # load fashion MNIST data
+            (self.x_train, self.y_train), (self.x_test, self.y_test) = \
+                load_mnist_from_keras(normalize=True, return_4d_tensor=True, one_hot=True, fashion=True)
+        else: 
+            # load digits
+            (self.x_train, self.y_train), (self.x_test, self.y_test) = \
+                load_mnist_from_keras(normalize=True, return_4d_tensor=True, one_hot=True, fashion=False)
+            
         self.num_classes = self.y_test.shape[1]
 
         # logging results
@@ -277,7 +285,7 @@ class OneShotTransferCNN():
     
     name = "OneShotTransferCNN"
 
-    def __init__(self, log=False, folds=10, batchsize=128, verbose=1):
+    def __init__(self, log=False, folds=10, batchsize=128, verbose=1, fashion_mnist=False):
         
         # specify the parameter ranges as [min, max].
         # first continuous, then integer params.
@@ -322,8 +330,15 @@ class OneShotTransferCNN():
         self.nfolds = folds # for cross validation
 
         # data
-        self.x_train, self.y_train = load_mnist("./Data/", kind='train')
-        self.x_test, self.y_test = load_mnist("./Data/", kind='test')
+        if fashion_mnist:
+            # load fashion MNIST data
+            (self.x_train, self.y_train), (self.x_test, self.y_test) = \
+                load_mnist_from_keras(normalize=True, return_4d_tensor=True, one_hot=True, fashion=True)
+        else: 
+            # load digits
+            (self.x_train, self.y_train), (self.x_test, self.y_test) = \
+                load_mnist_from_keras(normalize=True, return_4d_tensor=True, one_hot=True, fashion=False)
+
         self.num_classes = self.y_test.shape[1]
 
         # logging results
@@ -560,7 +575,7 @@ class OneShotAutoencoder():
 
     name = "OneShotAutoencoder"
 
-    def __init__(self, log=False, folds=10, batchsize=128, verbose=1):
+    def __init__(self, log=False, folds=10, batchsize=128, verbose=1, fashion_mnist=False):
 
         # specify the parameter ranges as [min, max].
         # first continuous, then integer params.
@@ -606,8 +621,15 @@ class OneShotAutoencoder():
         self.nfolds = folds # for cross validation
 
         # data
-        self.x_train, self.y_train = load_mnist("./Data/", kind='train')
-        self.x_test, self.y_test = load_mnist("./Data/", kind='test')
+        if fashion_mnist:
+            # load fashion MNIST data
+            (self.x_train, self.y_train), (self.x_test, self.y_test) = \
+                load_mnist_from_keras(normalize=True, return_4d_tensor=True, one_hot=True, fashion=True)
+        else: 
+            # load digits
+            (self.x_train, self.y_train), (self.x_test, self.y_test) = \
+                load_mnist_from_keras(normalize=True, return_4d_tensor=True, one_hot=True, fashion=False)
+
         self.num_classes = self.y_test.shape[1]
 
         # logging results
@@ -887,7 +909,7 @@ class OneShotSiameseNetwork():
 
     name = "OneShotSiameseNetwork"
 
-    def __init__(self, log=False, folds=10, batchsize=64, verbose=1):
+    def __init__(self, log=False, folds=10, batchsize=64, verbose=1, fashion_mnist=False):
 
         # specify the parameter ranges as [min, max].
         # first continuous, then integer params.
@@ -907,7 +929,7 @@ class OneShotSiameseNetwork():
                     'neurons_final': [5, 11],
                     'rotation': [0, 360],
                     'horizontal_flip': [0, 1],
-                    'epochs': [3, 15]}
+                    'epochs': [1, 2]} # [3, 15] <- original setting, [1, 1] used for testing
 
         self.hyperparams = list(self.rgs.keys())
         self.dim = len(self.hyperparams)
@@ -923,8 +945,15 @@ class OneShotSiameseNetwork():
         self.nfolds = folds # for cross validation
 
         # data
-        self.x_train, self.y_train = load_mnist("./Data/", kind='train')
-        self.x_test, self.y_test = load_mnist("./Data/", kind='test')
+        if fashion_mnist:
+            # load fashion MNIST data
+            (self.x_train, self.y_train), (self.x_test, self.y_test) = \
+                load_mnist_from_keras(normalize=True, return_4d_tensor=True, one_hot=True, fashion=True)
+        else: 
+            # load digits
+            (self.x_train, self.y_train), (self.x_test, self.y_test) = \
+                load_mnist_from_keras(normalize=True, return_4d_tensor=True, one_hot=True, fashion=False)
+
         self.input_shape = (28, 28, 1)
         self.num_classes = self.y_test.shape[1]
 

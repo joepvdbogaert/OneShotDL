@@ -2,6 +2,7 @@ import os
 import gzip
 import numpy as np
 from keras.utils import to_categorical
+from keras.datasets import mnist, fashion_mnist
 import random
 
 def load_mnist(path, kind='train', normalize=True, return_4d_tensor=True, one_hot=True):
@@ -39,7 +40,35 @@ def load_mnist(path, kind='train', normalize=True, return_4d_tensor=True, one_ho
 
     return images, labels
 
-
+def load_mnist_from_keras(normalize=True, return_4d_tensor=True, one_hot=True, fashion=False):
+    """ Load and preprocess MNIST or Fashion-MNIST data from Keras.
+    
+    :param path: Relative path to the data. 
+    :param kind: Data to retrieve. Either 'train' or 'test'.
+    :param normalize: Normalize the grayscale from (0,255) to (0,1).
+    :param fashion: If true Fashion-MNIST is loaded, otherwise the digits
+    :return: two tuples (x_train, y_train), (x_test, y_test)
+    """
+    if fashion:
+        (x_train, y_train), (x_test, y_test) = fashion_mnist.load_data()
+    else:
+        (x_train, y_train), (x_test, y_test) = mnist.load_data()
+    
+    if normalize:
+        x_train = x_train / 255
+        x_test = x_test / 255
+        
+    if return_4d_tensor:
+        x_train = x_train.reshape((x_train.shape[0], 28, 28, 1))
+        x_test = x_test.reshape((x_test.shape[0], 28, 28, 1))
+    
+    if one_hot:
+        y_train = to_categorical(y_train, 10)
+        y_test = to_categorical(y_test, 10)
+    
+    return (x_train, y_train), (x_test, y_test)
+        
+    
 def split_and_select_random_data(x, y, xtest, ytest, num_target_classes=5, num_examples_per_class=1):
     """ Select random classes and return random examples of these classes.
 
